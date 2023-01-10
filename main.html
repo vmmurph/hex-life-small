@@ -95,8 +95,12 @@
       // g.append('polygon').attr('points', hexPoints(150 + 86.6, 150, 50)).attr('fill', 'none').attr('stroke-width', 1).attr('stroke', 'black')
       // Math.sqrt(3) * radius <-- this gets half the hex width
       const onClick = hex => {
-        console.log('click')
-        w.addObj(new Herbivore(Tools.getRand(0, 1000)), hex.xloc, hex.yloc)
+        // console.log(hex.xloc + ', ' + hex.yloc)
+        plants = hex.objs.filter(o => o.name == 'plant')
+        let newColor = null
+        if (plants.length > 0)
+          newColor = plants[0].color
+        w.addObj(new Herbivore(newColor == null ? Tools.getRand(0, 1000) : newColor), hex.xloc, hex.yloc)
         draw()
       }
 
