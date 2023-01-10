@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <script src="Tools.js"></script>
+    <script src="HexWorld.js"></script>
+    <script src="Plant.js"></script>
+    <script src="Herbivore.js"></script>
+    <style>
+        body { background-color: white; }
+        /* .buttons {
+          margin-left: 18px;
+          margin-bottom: 20px;
+        } */
+    </style>
+  </head>
+  <body>
+    <svg id="canvas" height='500' width='800'></svg>
+    <!-- <br />
+    <div class="buttons">
+      <button id="step" onclick="step()">Step</button>
+      <button id="start" onclick="startInterval()">Start</button>
+      <button id="stop" onclick="stopInterval()" disabled>Stop</button>
+      <button id="clearBtn" onclick="clearBtn()">Clear</button>
+    </div> -->
+  </body>
+
+  <script>
+    const worldWidthInHexes = 20
+    const worldHeightInHexes = 30
+    const hexSize = 15
+
+    // milliseconds between every step when running automatically
+    const intervalTime = 350
+    // milliseconds for draw transitions
+    const transitionTime = intervalTime * .75
+    // skips every <num> draw steps
+    const drawSkip = 1
+
+    let w = new HexWorld(worldWidthInHexes, worldHeightInHexes)
+    
+    const generateRandomStart = () => {
+      const getRandX = () => Tools.getRand(0, worldWidthInHexes - 1)
+      const getRandY = () => Tools.getRand(0, worldHeightInHexes - 1)
+      const herb1 = w.addObj(new Herbivore(), getRandX(), getRandY())
+      const neighbors = herb1.hex.getNeighbors()
+      neighbors.forEach(hex => {
+        hex.add(new Plant())
+      })
+
+      let x = getRandX()
+      let y = getRandY()
+      while (w.getHex(x, y).objs.length > 0) {
+        x = getRandX()
+        y = getRandY()
+      }
+      w.addObj(new Plant(300), getRandX(), getRandY())
+    }
+
+    generateRandomStart()
+
+    let margin = {
+        top: 20,
+        right: 20,
+        bottom: 20,
+        left: 20
+      }
+
+    let svg = d3.select('#canvas')
+    const halfHexWidth = Math.sqrt(3) * hexSize / 2
+    let width = halfHexWidth * (worldWidthInHexes * 2 + 1)
+    // let height = worldHeightInHexes * hexSize * 2
+    let height = (1 + ((worldHeightInHexes - 1) * .75)) * (hexSize * 2)
+    svg.attr('width', width + margin.left + margin.right)
+       .attr('height', height + margin.top + margin.bottom)
+
+    const g = svg.append('g').attr('transform', `translate(${margin.left}, ${margin.top})`)
+
+    // hexes
+    function hexPoints(x, y, radius) {
+        var points = [];
+        for (var theta = 0; theta < Math.PI * 2; theta += Math.PI / 3) {
+          var pointX, pointY;
+
+          pointX = x + radius * Math.sin(theta);
+          pointY = y + radius * Math.cos(theta);
+
+          points.push(pointX + ',' + pointY);
+        }
+
+        return points.join(' ');
+      }
+
+      // const hex = g.append('polygon').attr('points', hexPoints(150, 150, 50)).attr('fill', 'none').attr('stroke-width', 1).attr('stroke', 'black')
+      // g.append('polygon').attr('points', hexPoints(150 + 86.6, 150, 50)).attr('fill', 'none').attr('stroke-width', 1).attr('stroke', 'black')
+      // Math.sqrt(3) * radius <-- this gets half the hex width
+
+      Object.prototype.appendHex = function (x, y, radius) {
+        const hex = this.append('polygon').attr('points', hexPoints(x, y, radius))
+        hex.attr('fill', '#f5f5f5')
+          .attr('stroke-width', 1)
+          .attr('stroke', 'grey')
+          .classed('hex', true)
+        return hex
+      }
+      
+      const totalWidth = halfHexWidth * (worldWidthInHexes * 2 + 1)
+      const totalHeight = hexSize * 2.5
+      let xScale = d3.scaleLinear().domain([0, 1]).range([halfHexWidth, halfHexWidth * 3])
+      let yScale = d3.scaleLinear().domain([0, 1]).range([hexSize, hexSize * 2.5])
+      
+      const hexLayer = g.append('g').attr('id', 'hexLayer')
+
+      const getHexX = hex => xScale(hex.getDrawX())
+      const getHexY = hex => yScale(hex.yloc)
+
+      w.flatWorld.forEach(hex => {
+        hexLayer.appendHex(getHexX(hex), getHexY(hex), hexSize)
+      })
+
+      const getOrganisms = () => {
+        const organisms = []
+        w.flatWorld.forEach(hex => {
+          hex.objs.forEach(obj => {
+            organisms.push(obj)
+          })
+        })
+        return organisms
+      }
+
+      // drawing plants
+      const plantLayer = g.append('g').attr('id', 'plantLayer')
+
+      const getPlantSize = d => {
+        let fullSize = hexSize - .2
+        return d.size / 5 * fullSize
+        // return fullSize
+      }
+
+      const getPlantPoints = d => {
+        return hexPoints(xScale(d.hex.getDrawX()), yScale(d.hex.yloc), getPlantSize(d))
+      }
+      
+      function drawPlants () {
+        let plants = getOrganisms().filter(e => e.name === 'plant')
+
+        let plantSelection = plantLayer.selectAll('polygon').data(plants, d => d.key)
+        plantSelection.enter()
+          .append('polygon')
+            .attr('points', getPlantPoints)
+            .attr('fill', d => Tools.getHexColor(d.color))
+            .attr('opacity', .9)
+            .attr('coordinates', d => `(${d.hex.xloc}, ${d.hex.yloc})`)
+            .classed('hex', true)
+
+        plantSelection.transition().duration(transitionTime)
+          .attr('points', getPlantPoints)
+
+        plantSelection.exit().remove()
+      }
+
+      // drawing herbivores
+      const herbLayer = g.append('g').attr('id', 'herbivoreLayer')
+      const sizeScale = d3.scaleLinear().domain([0, 10]).range([0, 20])
+
+      function drawHerbivores () {
+        let herbivores = getOrganisms().filter(e => e.name === 'herbivore')
+        let groupsEnter = herbLayer.selectAll('g').data(herbivores, d => d.key).enter()
+          .append('g')
+          .classed('herbivore', true)
+
+        groupsEnter.append('circle')
+          .attr('r', hexSize * .8)
+          .attr('fill', 'none')
+          .attr('stroke', d => Tools.getHexColor(d.color))
+          .attr('stroke-width', d => sizeScale(d.getDrawSize()))
+          .attr('cx', d => xScale(d.hex.getDrawX()))
+          .attr('cy', d => yScale(d.hex.yloc))
+          .attr('opacity', .9)
+          .attr('style', d => `clip-path: url(#h${d.key});`)
+
+        groupsEnter.append('clipPath')
+          .attr('id', d => `h${d.key}`)
+          .append('circle')
+            .attr('r', hexSize * .8)
+            .attr('cx', d => xScale(d.hex.getDrawX()))
+            .attr('cy', d => yScale(d.hex.yloc))
+
+        let groupsUpdate = herbLayer.selectAll('g').data(herbivores, d => d.key)
+
+        groupsUpdate.selectAll('clipPath')
+          .select('circle').transition().duration(transitionTime)
+            .attr('cx', d => xScale(d.hex.getDrawX()))
+            .attr('cy', d => yScale(d.hex.yloc))
+
+        groupsUpdate.selectAll('circle').transition().duration(transitionTime)
+          .attr('cx', d => xScale(d.hex.getDrawX()))
+          .attr('cy', d => yScale(d.hex.yloc))
+          .attr('coordinates', d => `(${d.hex.xloc}, ${d.hex.yloc})`)
+          .attr('stroke-width', d => sizeScale(d.getDrawSize()))
+
+        groupsUpdate.exit().remove()
+      }
+
+      const draw = () => {
+        drawPlants()
+        drawHerbivores()
+      }
+
+      draw()
+
+      // button functions
+      const step = () => {
+        w.step()
+        draw()
+      }
+
+      let interval
+      const startInterval = () => {
+          d3.select('#start').attr('disabled', true)
+          d3.select('#stop').attr('disabled', null)
+          interval = d3.interval(() => {
+            w.step()
+            if (w.age % drawSkip === 0) {
+              draw()
+            }
+          }, intervalTime)
+      }
+
+      const stopInterval = () => {
+          d3.select('#start').attr('disabled', null)
+          d3.select('#stop').attr('disabled', true)
+          interval.stop()
+      }
+
+      const clearBtn = () => {
+        w = new HexWorld(worldWidthInHexes, worldHeightInHexes)
+        generateRandomStart()
+        herbLayer.selectAll('g').remove()
+        plantLayer.selectAll('circle').remove()
+        draw()
+      }
+        
+      startInterval()
+  </script>
+</html>
