@@ -94,6 +94,11 @@
       // const hex = g.append('polygon').attr('points', hexPoints(150, 150, 50)).attr('fill', 'none').attr('stroke-width', 1).attr('stroke', 'black')
       // g.append('polygon').attr('points', hexPoints(150 + 86.6, 150, 50)).attr('fill', 'none').attr('stroke-width', 1).attr('stroke', 'black')
       // Math.sqrt(3) * radius <-- this gets half the hex width
+      const onClick = hex => {
+        console.log('click')
+        w.addObj(new Herbivore(Tools.getRand(0, 1000)), hex.xloc, hex.yloc)
+        draw()
+      }
 
       Object.prototype.appendHex = function (x, y, radius) {
         const hex = this.append('polygon').attr('points', hexPoints(x, y, radius))
@@ -116,6 +121,7 @@
 
       w.flatWorld.forEach(hex => {
         hexLayer.appendHex(getHexX(hex), getHexY(hex), hexSize)
+          .on('click', () => onClick(hex))
       })
 
       const getOrganisms = () => {
@@ -152,6 +158,7 @@
             .attr('opacity', .9)
             .attr('coordinates', d => `(${d.hex.xloc}, ${d.hex.yloc})`)
             .classed('hex', true)
+            .on('click', d => onClick(d.hex))
 
         plantSelection.transition().duration(transitionTime)
           .attr('points', getPlantPoints)
@@ -168,6 +175,7 @@
         let groupsEnter = herbLayer.selectAll('g').data(herbivores, d => d.key).enter()
           .append('g')
           .classed('herbivore', true)
+          .on('click', d => onClick(d.hex))
 
         groupsEnter.append('circle')
           .attr('r', hexSize * .8)
@@ -178,7 +186,7 @@
           .attr('cy', d => yScale(d.hex.yloc))
           .attr('opacity', .9)
           .attr('style', d => `clip-path: url(#h${d.key});`)
-
+          
         groupsEnter.append('clipPath')
           .attr('id', d => `h${d.key}`)
           .append('circle')
@@ -240,10 +248,11 @@
         plantLayer.selectAll('circle').remove()
         draw()
       }
-       
+      
       for (let i=0; i<65; i++) {
         step()
       }
+
       startInterval()
   </script>
 </html>
