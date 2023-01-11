@@ -3,7 +3,7 @@ class Herbivore {
   movementCost = .5
   eatCost = .5
   // how much a herb can mutate when propagating
-  mutationFactor = 35
+  mutationFactor = 45
   // chance a herb can eat a plant with the same exact color (0 to 100)
   maxEatChance = 80
   

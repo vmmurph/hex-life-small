@@ -43,21 +43,11 @@
     let w = new HexWorld(worldWidthInHexes, worldHeightInHexes)
     
     const generateRandomStart = () => {
-      //const herb1 = w.addObj(new Herbivore(), getRandX(), getRandY())
-      hex = w.getHex(getRandX(), getRandY())
-      hex.add(new Plant())
-      // const neighbors = herb1.hex.getNeighbors()
-      // neighbors.forEach(hex => {
-      //   hex.add(new Plant())
-      // })
-
-      let x = getRandX()
-      let y = getRandY()
-      while (w.getHex(x, y).objs.length > 0) {
-        x = getRandX()
-        y = getRandY()
-      }
-      w.addObj(new Plant(300), getRandX(), getRandY())
+      x = Math.round(worldWidthInHexes / 2)
+      y = Math.round(worldHeightInHexes / 2)
+      w.addObj(new Plant(300), x, y)
+      w.addObj(new Plant(600), x+1, y+1)
+      w.addObj(new Plant(900), x, y+1)
     }
 
     generateRandomStart()
@@ -263,7 +253,7 @@
       plants = w.allObjs.filter(o => o.name == 'plant')
       plants.forEach(plant => plant.size = 5)
       // create an herbivore in a random spot
-      hex = w.getHex(getRandX(), getRandY())
+      hex = w.getHex(getRandX(), 0)
       onClick(hex)
 
       startInterval()
