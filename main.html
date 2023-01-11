@@ -30,6 +30,9 @@
     const worldHeightInHexes = 30
     const hexSize = 15
 
+    const getRandX = () => Tools.getRand(0, worldWidthInHexes - 1)
+    const getRandY = () => Tools.getRand(0, worldHeightInHexes - 1)
+
     // milliseconds between every step when running automatically
     const intervalTime = 350
     // milliseconds for draw transitions
@@ -40,13 +43,13 @@
     let w = new HexWorld(worldWidthInHexes, worldHeightInHexes)
     
     const generateRandomStart = () => {
-      const getRandX = () => Tools.getRand(0, worldWidthInHexes - 1)
-      const getRandY = () => Tools.getRand(0, worldHeightInHexes - 1)
-      const herb1 = w.addObj(new Herbivore(), getRandX(), getRandY())
-      const neighbors = herb1.hex.getNeighbors()
-      neighbors.forEach(hex => {
-        hex.add(new Plant())
-      })
+      //const herb1 = w.addObj(new Herbivore(), getRandX(), getRandY())
+      hex = w.getHex(getRandX(), getRandY())
+      hex.add(new Plant())
+      // const neighbors = herb1.hex.getNeighbors()
+      // neighbors.forEach(hex => {
+      //   hex.add(new Plant())
+      // })
 
       let x = getRandX()
       let y = getRandY()
@@ -219,11 +222,13 @@
         drawHerbivores()
       }
 
-      draw()
+      //draw()
 
       // button functions
-      const step = () => {
-        w.step()
+      const step = (n = 1) => {
+        for (let i = 0; i < n; i++) {
+          w.step()
+        }
         draw()
       }
 
@@ -245,17 +250,21 @@
           interval.stop()
       }
 
-      const clearBtn = () => {
-        w = new HexWorld(worldWidthInHexes, worldHeightInHexes)
-        generateRandomStart()
-        herbLayer.selectAll('g').remove()
-        plantLayer.selectAll('circle').remove()
-        draw()
-      }
+      // const clearBtn = () => {
+      //   w = new HexWorld(worldWidthInHexes, worldHeightInHexes)
+      //   generateRandomStart()
+      //   herbLayer.selectAll('g').remove()
+      //   plantLayer.selectAll('circle').remove()
+      //   draw()
+      // }
       
-      for (let i=0; i<65; i++) {
-        step()
-      }
+      // fill the grid with full-sized plants
+      for (let i = 0; i < 120; i++) { w.step() }
+      plants = w.allObjs.filter(o => o.name == 'plant')
+      plants.forEach(plant => plant.size = 5)
+      // create an herbivore in a random spot
+      hex = w.getHex(getRandX(), getRandY())
+      onClick(hex)
 
       startInterval()
   </script>
